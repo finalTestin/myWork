@@ -2,7 +2,12 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 from pyspark.sql import functions
+from pyspark.ml import Pipeline
 import math
+from pyspark.ml.classification import DecisionTreeClassifier, DecisionTreeClassificationModel,RandomForestClassifier, RandomForestClassificationModel
+import pyspark.ml.feature as ft
+from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+
 
 spark = SparkSession\
     .builder\
