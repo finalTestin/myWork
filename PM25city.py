@@ -108,4 +108,29 @@ day_count_level.createOrReplaceTempView("day_count_level")
 spark.sql("select city, level, count(*) as amount from day_count_level group by city,level order by city,level").show()
 
 #(3)
+# 将city作为标签，使用空气浓度，时间和空气质量为特征
+# 切分原始数据集为训练集和预测集，预测city的值
+# 最后用多分类准确率评价, 0.4085
+data = spark.sql("select PM25,PM10,NO2,SO2,O3_1,O3_8h,CO,AQI,level,year,month,date,hour,city from init_df")
+# 将特征向量聚合到一起
+vector_assembler = ft.VectorAssembler(inputCols=["PM25","PM10","NO2","SO2","O3_1","O3_8h","CO","AQI","level","year","month","date","hour"], outputCol="features")
+data = vector_assembler.transform(data)
+# data.show()
+# 将city转换为数字编码
+label_indexer = ft.StringIndexer(inputCol="city", outputCol="city_int").fit(data)
+label_converter = ft.IndexToString(inputCol="pred_int", outputCol="pred", labels=label_indexer.labels)
+
+train, test = data.randomSplit([0.7, 0.3])
+# 定义随机森林分类器
+classifier = RandomForestClassifier(labelCol="city_int", featuresCol="features", predictionCol="pred_int", maxDepth=8, maxBins=128, maxMemoryInMB=512, numTrees=50)
+
+# 模型训练与预测
+pipeline = Pipeline(stages=[label_indexer, classifier, label_converter])
+model = pipeline.fit(train)
+prediction = model.transform(test)
+prediction.select("city","city_int","pred","pred_int","features").show(100)
+# 评估函数
+evaluator = MulticlassClassificationEvaluator(predictionCol='pred_int', labelCol='city_int', metricName='accuracy')
+score = evaluator.evaluate(prediction)
+print("准确率: ", score)
 
